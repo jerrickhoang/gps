@@ -32,9 +32,9 @@ def gauss_fit_wishart_prior(pts, phi, m, mu0, n0, weights, dX, dU, sigma_reg):
     # Add sigma regularization.
     sigma += sig_reg
 
-    return sigma, mu
-    
-def extract_policy_from_gaussian(sigma, mu, dX, dU):
+    return mu, sigma
+
+def extract_policy_from_gaussian(mu, sigma, dX, dU):
     """Conditioning to get the dynamics.
     
     :param mu: mean of the fitted gaussian.
@@ -51,3 +51,23 @@ def extract_policy_from_gaussian(sigma, mu, dX, dU):
     dynsig = sigma[dX:dX+dU, dX:dX+dU] - fd.dot(sigma[:dX, :dX]).dot(fd.T)
     dynsig = 0.5 * (dynsig + dynsig.T)
     return fd, fc, dynsig
+
+def extract_policy_using_fitted_gaussian(pts, phi, m, mu0, n0, weights, dX, dU, sigma_reg):
+    """Fit a guassian using MAP estimate and wishart prior.
+    See http://www.jmlr.org/papers/volume17/15-522/15-522.pdf appendix A.3 for explanation
+
+    :param pts: TODO: dimension
+    :param phi: parameter of prior normal-wishart distribution TODO: what is the meaning of this parameter.
+    :param m: variance coefficient - parameter of prior normal-wishart distribution.
+    :param mu0: mean - parameter of prior normal-wishart distribution.
+    :param n0: count - parameter of prior normal-wishart distribution.
+    :param weights: weights of the points TODO: dimension.
+    :param dX: dimension of the state.
+    :param dU: dimension of the action.
+    :sigma_reg: sigma regularization.
+
+    :returns fd, fc, dynsig: TODO
+    """
+
+    mu, sigma = gauss_fit_wishart_prior(pts, phi, m, mu0, n0, weights, sigma_reg)
+    return extract_policy_from_gaussian(mu, sigma, dX, dU)
