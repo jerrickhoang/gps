@@ -9,10 +9,10 @@ class GPS(object):
         self.dynamics = DyanmicsLRPrior()
         self.traj_opt = LQR()
 
-    def update_dynamics(samples):
+    def update_dynamics(self, trajectories):
         pass
 
-    def collect_sample():
+    def collect_sample(self):
         pass
 
 
