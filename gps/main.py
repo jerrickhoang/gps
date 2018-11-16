@@ -12,20 +12,39 @@ class GPS(object):
     def update_dynamics(self, trajectories):
         pass
 
-    def collect_sample(self):
-        pass
-
+    def collect_sample(self, policy):
+        env = self.init_env()
+        s = env.reset()
+        states, actions = [], []
+        for t in range(T):
+            a = policy.act(s)
+            s, r, done, _ = env.step(a)
+            states.append(s)
+            actions.append(a)
+        return Sample(states, actions)
 
 def main(num_iter=10, num_trajs_per_iter=10, num_inner_iter=10):
     gps = GPS()
     trajs = []
+    # 1. Collect sample with current time-varying linear Gaussian policy and
+    #    ground truth dynamics.
+    #    Input: policy, gt dynamics.
+    #    Output: trajectories.
     for i in range(num_iter):
         for j in range(num_trajs_per_iter):
             trajs.append(gps.collect_sample())
     trajs = TrajectoryList(trajs)
 
+    # 2. Update the normal-inverse-wishart prior and use the prior to obtain the MAP
+    #    estimate of the Gaussian dynamics.
+    #    Input: trajectories.
+    #    Output: updated prior and dynamics.
     gps.update_dynamics(trajs)
 
+    # 3. Calculate the KL divergence step size by estimating costs under previous and
+    #    current dynamics. See https://arxiv.org/pdf/1607.04614.pdf appendex A, B for details.
+    #    Input: prev and current dynamics and policies.
+    #    Output: step size adjustment variable.
     gps.update_kl_step_mult()
 
     for i in range(num_inner_iter):
