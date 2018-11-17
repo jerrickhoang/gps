@@ -1,4 +1,6 @@
 
+from gps.environment.trajectory import Trajectory
+from gps.environment.trajectory_list import TrajectoryList
 from gps.dynamics.dynamics_lr_prior import DynamicsLRPrior
 from gps.trajectory_optimizer.lqr import LQR
 
@@ -12,16 +14,19 @@ class GPS(object):
     def update_dynamics(self, trajectories):
         pass
 
+    def init_env(self):
+        return None
+
     def collect_sample(self, policy):
         env = self.init_env()
         s = env.reset()
-        states, actions = [], []
+        traj = Trajectory()
         for t in range(T):
             a = policy.act(s)
             s, r, done, _ = env.step(a)
-            states.append(s)
-            actions.append(a)
-        return Sample(states, actions)
+            traj.set_X(s, t)
+            traj.set_U(a, t)
+        return traj
 
 def main(num_iter=10, num_trajs_per_iter=10, num_inner_iter=10):
     gps = GPS()

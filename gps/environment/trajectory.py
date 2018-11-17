@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class Sample(object):
+class Trajectory(object):
     """Class that handles the representation of a trajectory and stores a
     single trajectory.
     """

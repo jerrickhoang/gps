@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class SampleList(object):
+class TrajectoryList(object):
     """ Class that handles writes and reads to sample data. """
     def __init__(self, samples):
         self._samples = samples

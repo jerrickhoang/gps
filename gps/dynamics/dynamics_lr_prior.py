@@ -55,7 +55,8 @@ class DynamicsLRPrior(Dynamics):
             mu0, Phi, mm, n0 = self.prior.eval(dX, dU, Ys)
             sig_reg = np.zeros((dX+dU+dX, dX+dU+dX))
             sig_reg[it, it] = self._hyperparams['regularization']
-            Fm, fv, dyn_covar = extract_policy_using_fitted_gaussian(Ys, mu0, Phi, mm, n0, dwts, dX+dU, dX, sig_reg)
+            Fm, fv, dyn_covar = extract_policy_using_fitted_gaussian(
+                    Ys, mu0, Phi, mm, n0, dwts, dX+dU, dX, sig_reg)
             self.Fm[t, :, :] = Fm
             self.fv[t, :] = fv
             self.dyn_covar[t, :, :] = dyn_covar
