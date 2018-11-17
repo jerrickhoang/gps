@@ -14,6 +14,7 @@ class GMM(object):
         self.mu = np.zeros((K, D))
         self.logmass = np.log(1.0 / K) * np.ones((K, 1))
         self.mass = (1.0 / K) * np.ones((K, 1))
+        self.N = N
 
         cidx = np.random.randint(0, K, size=(1, N))
         for i in range(K):
@@ -23,6 +24,63 @@ class GMM(object):
             sigma = (1.0 / K) * (diff.dot(diff.T))
             self.mu[i, :] = mu
             self.sigma[i, :, :] = sigma + np.eye(D) * 2e-6
+
+    def inference(self, data):
+        """Run inference to get the posterior distribution.
+
+        :param data: A N x D array of points.
+        :returns TODO:
+        """
+        # Compute posterior cluster weights.
+        log_weights = self.cluster_weights(data)
+
+        # Compute posterior mean and covariance.
+        mu0, phi = self.moments(log_weights)
+
+        # Set hyperparameters.
+        m = self.N
+        n0 = m - 2 - mu0.shape[0]
+
+        # Normalize.
+        m = float(m) / self.N
+        n0 = float(n0) / self.N
+        return mu0, phi, m, n0
+
+    def moments(self, log_weights):
+        """Compute the first order moments of the cluster mixture.
+
+        :param log_weights: A K x 1 array of normalized cluster log
+                            probabilities.
+        :returns mu: A D x 1 mean vector.
+        :returns sigma: A D x D covaraince matrix.
+        """
+        weights = np.exp(log_weights)
+
+        mu = np.sum(self.mu * weights, axis=0)
+
+        # Compute overall covariance.
+        diff = self.mu - np.expand_dims(mu, axis=0)
+        diff_expand = np.expand_dims(self.mu, axis=1) * np.expand_dims(diff, axis=2)
+        wts_expand = np.expand_dims(wts, axis=2)
+        sigma = np.sum((self.sigma + diff_expand) * wts_expand, axis=0)
+        return mu, sigma
+
+    def cluster_weights(self, data):
+        """Calculate the normalized cluster weights.
+
+        :param data: A N x D array of points.
+        :returns log_weights: A K x 1 array of normalized cluster log
+                              probabilities.
+        """
+        # Compute probability of each point under each cluster.
+        logprobs = self.estep(data)
+        
+        # Renormalize to get cluster weights.
+        log_weights = logprobs - logsum(logprobs, axis=1)
+        
+        # Average the cluster probabilities.
+        log_weights = logsum(log_weights, axis=0) - np.log(data.shape[0])
+        return log_weights.T
 
     def estep(self, X):
         """Expectation step of EM algorithm.
