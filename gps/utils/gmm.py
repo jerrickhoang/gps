@@ -65,8 +65,8 @@ class GMM(object):
         # Compute overall covariance.
         diff = self.mu - np.expand_dims(mu, axis=0)
         diff_expand = np.expand_dims(self.mu, axis=1) * np.expand_dims(diff, axis=2)
-        wts_expand = np.expand_dims(wts, axis=2)
-        sigma = np.sum((self.sigma + diff_expand) * wts_expand, axis=0)
+        weights_expand = np.expand_dims(weights, axis=2)
+        sigma = np.sum((self.sigma + diff_expand) * weights_expand, axis=0)
         return mu, sigma
 
     def cluster_weights(self, data):
