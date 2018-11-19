@@ -5,11 +5,15 @@ import scipy.linalg
 def logsum(vec, axis=0, keepdims=True):
     maxv = np.max(vec, axis=axis, keepdims=keepdims)
     maxv[maxv == -float('inf')] = 0
+    return np.log(np.sum(np.exp(vec-maxv), axis=axis, keepdims=keepdims)) + maxv
 
 
 class GMM(object):
 
-    def init_vars(self, N, D, K):
+    def __init__(self):
+        self._initialized = False
+
+    def init_vars(self, data, N, D, K):
         self.sigma = np.zeros((K, D, D))
         self.mu = np.zeros((K, D))
         self.logmass = np.log(1.0 / K) * np.ones((K, 1))
@@ -155,12 +159,13 @@ class GMM(object):
             sigma = self.sigma[i, :, :]
             self.sigma[i, :, :] = 0.5 * (sigma + sigma.T) + 1e-6 * np.eye(D)
 
-    def update(self, data, K, max_iterations=100, init=False):
+    def update(self, data, K, max_iterations=100):
         """Run EM algorithm.
         """
         N, D = data.shape[0], data.shape[1]
-        if init:
-            self.init_vars(N, D, K)
+        if not self._initialized:
+            self._initialized = True
+            self.init_vars(data, N, D, K)
         
         prevll = -float('inf')
         
@@ -173,10 +178,12 @@ class GMM(object):
 
             if ll < prevll:
                 # TODO: Why does log-likelihood decrease sometimes?
-                break
+                print("Log-likelihood decreasing. This is not supposed to happen")
+                # break
 
             # Converged.
             if np.abs(ll-prevll) < 1e-5*prevll:
+                print("Converged, breaking")
                 break
 
             prevll = ll
