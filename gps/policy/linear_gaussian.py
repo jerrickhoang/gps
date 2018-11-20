@@ -17,6 +17,7 @@ class LinearGaussianPolicy(Policy):
         :param chol_pol_cov: T x dU x dU Cholesky policy covariance.
         """
         Policy.__init__(self)
+        # Notice this fixed horizon T.
         self.T = K.shape[0]
         self.dU = K.shape[1]
         self.dX = K.shape[2]
@@ -38,7 +39,10 @@ class LinearGaussianPolicy(Policy):
         :param t: Time step.
         :param noise: T x dU noise vector.
         """
+        assert t < self.T
         u = self.K[t].dot(x) + self.k[t]
+        # TODO: should we generate the noise in this function instead of taking
+        #       the noise as input?
         u += self.chol_pol_cov[t].T.dot(noise)
         return u
 
