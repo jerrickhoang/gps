@@ -8,6 +8,9 @@ class LQR(object):
     def compute_costs(self):
         pass
 
+    def update(self):
+        pass
+
     def backward(self, prev_traj_distr, dynamics):
         """Performs LQR backward pass. This computes a new linear Gaussian
         policy object.
@@ -19,6 +22,10 @@ class LQR(object):
         T = prev_traj_distr.T
         dU = prev_traj_distr.dU
         dX = prev_traj_distr.dX
+        
+        # Pull out dynamics.
+        Fm = dynamics.Fm
+        fv = dynamics.fv
 
         # Allocate the value functions and state-value functions.
         Vxx = np.zeros((T, dX, dX))
@@ -78,7 +85,53 @@ class LQR(object):
 
         return traj_distr
 
-    def forward(self):
-        pass
+    def forward(self, traj_distr, dynamics):
+        """Performs LQR forward pass. Computes state-action marginals from dynamics and policy.
 
+        :param traj_distr: A linear Gaussian policy object.
+        :param dynamics: TODO
+        :returns mu: A T x (dX + dU) mean action vector
+        :returns sigma: TODO
+        """
+        T = traj_distr.T
+        dU = traj_distr.dU
+        dX = traj_distr.dX
+        
+        idx_x = slice(dX)
+        
+        # Allocate space.
+        sigma = np.zeros((T, dX+dU, dX+dU))
+        mu = np.zeros((T, dX+dU))
+
+        # Pull out dynamics.
+        Fm = traj_info.dynamics.Fm
+        fv = traj_info.dynamics.fv
+        dyn_covar = dynamics.dyn_covar
+
+        # Set initial covariance.
+        sigma[0, idx_x, idx_x] = traj_info.x0sigma
+        mu[0, idx_x] = traj_info.x0mu
+        
+        for t in range(T):
+            sigma[t, :, :] = np.vstack([
+                np.hstack([
+                    sigma[t, idx_x, idx_x],
+                    sigma[t, idx_x, idx_x].dot(traj_distr.K[t, :, :].T)
+                ]),
+                np.hstack([
+                    traj_distr.K[t, :, :].dot(sigma[t, idx_x, idx_x]),
+                    traj_distr.K[t, :, :].dot(sigma[t, idx_x, idx_x]).dot(
+                        traj_distr.K[t, :, :].T
+                    ) + traj_distr.pol_covar[t, :, :]
+                ])
+            ])
+            mu[t, :] = np.hstack([
+                mu[t, idx_x],
+                traj_distr.K[t, :, :].dot(mu[t, idx_x]) + traj_distr.k[t, :]
+            ])
+            if t < T - 1:
+                sigma[t+1, idx_x, idx_x] = \
+                        Fm[t, :, :].dot(sigma[t, :, :]).dot(Fm[t, :, :].T) + dyn_covar[t, :, :]
+                mu[t+1, idx_x] = Fm[t, :, :].dot(mu[t, :]) + fv[t, :]
+        return mu, sigma
     
