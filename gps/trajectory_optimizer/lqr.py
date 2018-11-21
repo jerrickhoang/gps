@@ -8,8 +8,11 @@ class LQR(object):
     def compute_costs(self):
         pass
 
-    def update(self):
-        pass
+    def update(self, traj_distr, kl_mult):
+        kl_step = self.base_kl_step * step_mult
+
+        for itr in range(self.max_iters):
+            traj_distr = self.backward(prev_traj_distr, dynamics)
 
     def backward(self, prev_traj_distr, dynamics):
         """Performs LQR backward pass. This computes a new linear Gaussian
