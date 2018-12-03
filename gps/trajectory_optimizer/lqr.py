@@ -8,11 +8,31 @@ class LQR(object):
     def compute_costs(self):
         pass
 
-    def update(self, traj_distr, kl_mult):
+    def update(self, eta, traj_distr, kl_mult):
         kl_step = self.base_kl_step * step_mult
 
         for itr in range(self.max_iters):
             traj_distr = self.backward(prev_traj_distr, dynamics)
+
+            new_mu, new_sigma = self.forward(traj_distr, dynamics)
+            kl_div = traj_distr_kl(new_mu, new_sigma, traj_distr, prev_traj_distr)
+        
+            diff = kl_div - kl_step
+            if abs(diff) < 0.1 * kl_step:
+                break
+            
+            if diff < 0:
+                # Eta was too big.
+                max_eta = eta
+                geom = np.sqrt(min_eta * max_eta)  # Geometric mean.
+                new_eta = max(geom, 0.1 * max_eta)
+            else: 
+                # Eta was too small.
+                min_eta = eta
+                geom = np.sqrt(min_eta * max_eta)  # Geometric mean.
+                new_eta = min(geom, 10.0 * min_eta)
+
+        return traj_distr, eta
 
     def backward(self, prev_traj_distr, dynamics):
         """Performs LQR backward pass. This computes a new linear Gaussian
@@ -123,9 +143,8 @@ class LQR(object):
                 ]),
                 np.hstack([
                     traj_distr.K[t, :, :].dot(sigma[t, idx_x, idx_x]),
-                    traj_distr.K[t, :, :].dot(sigma[t, idx_x, idx_x]).dot(
-                        traj_distr.K[t, :, :].T
-                    ) + traj_distr.pol_covar[t, :, :]
+                    traj_distr.K[t, :, :].dot(sigma[t, idx_x, idx_x]).dot(traj_distr.K[t, :, :].T) + \
+                            traj_distr.pol_covar[t, :, :]
                 ])
             ])
             mu[t, :] = np.hstack([
@@ -133,8 +152,6 @@ class LQR(object):
                 traj_distr.K[t, :, :].dot(mu[t, idx_x]) + traj_distr.k[t, :]
             ])
             if t < T - 1:
-                sigma[t+1, idx_x, idx_x] = \
-                        Fm[t, :, :].dot(sigma[t, :, :]).dot(Fm[t, :, :].T) + dyn_covar[t, :, :]
+                sigma[t+1, idx_x, idx_x] = Fm[t, :, :].dot(sigma[t, :, :]).dot(Fm[t, :, :].T) + dyn_covar[t, :, :]
                 mu[t+1, idx_x] = Fm[t, :, :].dot(mu[t, :]) + fv[t, :]
         return mu, sigma
-    
