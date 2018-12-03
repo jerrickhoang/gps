@@ -1,4 +1,58 @@
 
+def traj_distr_kl(new_mu, new_sigma, new_traj_distr, prev_traj_distr, tot=True):
+    """
+    Compute KL divergence between new and previous trajectory
+    distributions.
+
+    :param new_mu: T x dX, mean of new trajectory distribution.
+    :param new_sigma: T x dX x dX, variance of new trajectory distribution.
+    :param new_traj_distr: A linear Gaussian policy object, new
+                           distribution.
+    :param prev_traj_distr: A linear Gaussian policy object, previous
+                            distribution.
+
+    :returns kl_div: The KL divergence between the new and previous
+                     trajectories.
+    """
+    T, dX, dU = new_mu.shape[0], new_traj_distr.dX, new_traj_distr.dU
+    kl_div = np.zeros(T)
+
+    for t in range(T):
+        K_prev = prev_traj_distr.K[t, :, :]
+        K_new = new_traj_distr.K[t, :, :]
+
+        k_prev = prev_traj_distr.k[t, :]
+        k_new = new_traj_distr.k[t, :]
+
+        sig_prev = prev_traj_distr.pol_covar[t, :, :]
+        sig_new = new_traj_distr.pol_covar[t, :, :]
+
+        chol_prev = prev_traj_distr.chol_pol_covar[t, :, :]
+        chol_new = new_traj_distr.chol_pol_covar[t, :, :]
+
+        inv_prev = prev_traj_distr.inv_pol_covar[t, :, :]
+        inv_new = new_traj_distr.inv_pol_covar[t, :, :]
+
+        logdet_prev = 2 * sum(np.log(np.diag(chol_prev)))
+        logdet_new = 2 * sum(np.log(np.diag(chol_new)))
+
+        K_diff, k_diff = K_prev - K_new, k_prev - k_new
+        mu, sigma = new_mu[t, :dX], new_sigma[t, :dX, :dX]
+
+        # TODO(jhoang): link to some math that explains this. The idea is we can derive a closed-form of the expected 
+        # value of KL divergence between two linear time varying Gaussian.
+        kl_div[t] = max(
+                0,
+                0.5 * (logdet_prev - logdet_new - new_traj_distr.dU +
+                       np.sum(np.diag(inv_prev.dot(sig_new))) +
+                       k_diff.T.dot(inv_prev).dot(k_diff) +
+                       mu.T.dot(K_diff.T).dot(inv_prev).dot(K_diff).dot(mu) +
+                       np.sum(np.diag(K_diff.T.dot(inv_prev).dot(K_diff).dot(sigma))) +
+                       2 * k_diff.T.dot(inv_prev).dot(K_diff).dot(mu))
+        )
+
+    return np.sum(kl_div)
+
 
 class LQR(object):
 
